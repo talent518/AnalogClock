@@ -38,24 +38,16 @@
 **
 ****************************************************************************/
 
+#include <iostream>
 #include <QtWidgets>
 #include <QtCore/qmath.h>
 
 #include "analogclock.h"
 
-//! [0] //! [1]
-AnalogClock::AnalogClock(QWidget *parent)
-//! [0] //! [2]
-    : QWidget(parent)
-    //! [2] //! [3]
-{
-    //! [3] //! [4]
+AnalogClock::AnalogClock(QWidget *parent): QWidget(parent) {
     QTimer *timer = new QTimer(this);
-    //! [4] //! [5]
     connect(timer, SIGNAL(timeout()), this, SLOT(update()));
-    //! [5] //! [6]
     timer->start(1000);
-    //! [6]
 
     setWindowTitle(tr("Analog Clock"));
     setWindowOpacity(1);
@@ -63,17 +55,22 @@ AnalogClock::AnalogClock(QWidget *parent)
     setAttribute(Qt::WA_TranslucentBackground);
     setCursor(Qt::OpenHandCursor);
 
-    QDesktopWidget* desktop = QApplication::desktop();
-    move((desktop->width() - this->width())/2, (desktop->height() - this->height())/2);
-
     resize(400, 400);
-    //! [7]
+    center();
 }
-//! [1] //! [7]
 
-//! [8] //! [9]
+void AnalogClock::center() {
+    QDesktopWidget* desktop = QApplication::desktop();
+    QRect rect = desktop->screenGeometry(desktop->screenNumber(this));
+    move(rect.left() + (rect.width() - width())/2, rect.top() + (rect.height() - height())/2);
+#if 0
+    std::cout << "Screen: left: " << rect.left() << ", top: " << rect.top() << ", width: " << width() << ", height: " << height() << std::endl;
+    rect = desktop->screenGeometry(this);
+    std::cout << "  Move: left: " << rect.left() << ", top: " << rect.top() << ", width: " << width() << ", height: " << height() << std::endl;
+#endif
+}
+
 void AnalogClock::paintEvent(QPaintEvent *)
-//! [8] //! [10]
 {
     static const QPoint hourHand[3] = {
         QPoint(7, 8),
@@ -98,21 +95,15 @@ void AnalogClock::paintEvent(QPaintEvent *)
     int side = qMin(width(), height());
     QTime time = QTime::currentTime();
     QDate date = QDate::currentDate();
-    //! [10]
 
-    //! [11]
     QPainter painter(this);
-    //! [11] //! [12]
     painter.setRenderHint(QPainter::Antialiasing);
-    //! [12] //! [13]
     painter.translate(width() / 2, height() / 2);
-    //! [13] //! [14]
     painter.scale(side / 200.0, side / 200.0);
-    //! [9] //! [14]
 
-    painter.setPen(minuteColor);
+    painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(255, 255, 255, 128));
-    painter.drawEllipse(QPointF(0, 0), 96, 96);
+    painter.drawEllipse(QPointF(0, 0), 97, 97);
 
     painter.setPen(QColor(0, 0, 0, 128));
     QString t;
@@ -121,56 +112,48 @@ void AnalogClock::paintEvent(QPaintEvent *)
     t.sprintf("%04d-%02d-%02d", date.year(), date.month(), date.day());
     painter.drawText(QRectF(-50, 30, 100, 100), Qt::AlignHCenter | Qt::AlignTop, t);
 
-    //! [15]
     painter.setPen(Qt::NoPen);
-    //! [15] //! [16]
     painter.setBrush(hourColor);
-    //! [16]
 
-    //! [17] //! [18]
     painter.save();
-    //! [17] //! [19]
     painter.rotate(30.0 * (time.hour() + time.minute() / 60.0 + time.second() / 3600.0));
     painter.drawConvexPolygon(hourHand, 3);
     painter.restore();
-    //! [18] //! [19]
 
-    //! [20]
-    painter.setPen(hourColor);
-    //! [20] //! [21]
+    {
+        QPen pen(hourColor);
 
-    for (int i = 0; i < 12; ++i) {
-        painter.drawLine(88, 0, 96, 0);
-        painter.rotate(30.0);
+        for (int i = 0; i < 12; ++i) {
+            pen.setWidth(i%3==0?3:2);
+            painter.setPen(pen);
+            painter.drawLine(88, 0, i%3==0 ? 95 : 96, 0);
+            painter.rotate(30.0);
+        }
     }
-    //! [21]
 
-    //! [22]
+    painter.setPen(minuteColor);
+    painter.setBrush(Qt::NoBrush);
+    painter.drawEllipse(QPointF(0, 0), 97, 97);
+
     painter.setPen(Qt::NoPen);
-    //! [22] //! [23]
     painter.setBrush(minuteColor);
 
-    //! [24]
     painter.save();
     painter.rotate(6.0 * (time.minute() + time.second() / 60.0));
     painter.drawConvexPolygon(minuteHand, 3);
     painter.restore();
-    //! [23] //! [24]
 
-    //! [25]
     painter.setPen(minuteColor);
-    //! [25] //! [26]
 
-    //! [27]
     for (int j = 0; j < 60; ++j) {
         if ((j % 5) != 0)
             painter.drawLine(92, 0, 96, 0);
         painter.rotate(6.0);
     }
-    //! [27]
 
     painter.setPen(Qt::NoPen);
     painter.setBrush(secondColor);
+
     painter.save();
     painter.rotate(6.0 * time.second());
     painter.drawConvexPolygon(secondHand, 3);
@@ -192,7 +175,6 @@ void AnalogClock::paintEvent(QPaintEvent *)
     painter.setBrush(QColor(255,255,255, 191));
     painter.drawEllipse(QPointF(0, 0), 3, 3);
 }
-//! [26]
 
 void AnalogClock::mousePressEvent(QMouseEvent *event){
     windowPos = this->pos();
@@ -205,4 +187,28 @@ void AnalogClock::mouseMoveEvent(QMouseEvent *event){
 }
 void AnalogClock::mouseReleaseEvent(QMouseEvent *event){
     setCursor(Qt::OpenHandCursor);
+}
+void AnalogClock::keyPressEvent(QKeyEvent *event) {
+    int size = qMin(width(), height());
+    QDesktopWidget* desktop = QApplication::desktop();
+    QRect rect = desktop->screenGeometry(desktop->screenNumber(this));
+    switch(event->key()) {
+    case Qt::Key_Plus:
+        size += 50;
+        if(size < rect.width() && size < rect.height()) {
+            resize(size, size);
+            center();
+        }
+        break;
+    case Qt::Key_Minus:
+        size -= 50;
+        if(size >= 100) {
+            resize(size, size);
+            center();
+        }
+        break;
+    default:
+        return;
+    }
+    // std::cout << "size: " << size << std::endl;
 }
